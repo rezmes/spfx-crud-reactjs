@@ -13,14 +13,24 @@
   // https://support.office.com/en-us/article/Turn-scripting-capabilities-on-or-off-1f2c515f-5d7e-448a-9fd7-835da935584f
   "requiresCustomScript": false,
 
-  "preconfiguredEntries": [{
-    "groupId": "5c03119e-3074-46fd-976b-c60198311f70", // Other
-    "group": { "default": "Other" },
-    "title": { "default": "ReactCRUD" },
-    "description": { "default": "CRUD operations with React JS" },
-    "officeFabricIconFontName": "Page",
-    "properties": {
-      "description": "ReactCRUD"
+  "preconfiguredEntries": [
+    {
+      "groupId": "5c03119e-3074-46fd-976b-c60198311f70", // Other
+      "group": { "default": "Other" },
+      "title": {
+        "default": "ReactCRUD",
+        "en-us": "ReactCRUD",
+        "fa-IR": "کراد ریکت"
+      },
+      "description": {
+        "default": "CRUD operations with React JS",
+        "en-us": "CRUD operations with React JS",
+        "fa-IR": "عملکرد کراد با استفاده از ریکت"
+      },
+      "officeFabricIconFontName": "Page",
+      "properties": {
+        "description": "ReactCRUD"
+      }
     }
-  }]
+  ]
 }
