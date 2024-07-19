@@ -18,14 +18,21 @@
       "groupId": "5c03119e-3074-46fd-976b-c60198311f70", // Other
       "group": { "default": "Other" },
       "title": {
-        "default": "ReactCRUD"
+        "default": "ReactCRUD",
+        "en-us": "ReactCRUD",
+        "fa-IR": "کراد ریکت"
       },
       "description": {
-        "default": "CRUD operations with React JS"
+        "default": "CRUD operations with React JS",
+        "en-us": "CRUD operations with React JS",
+        "fa-IR": "عملکرد کراد با استفاده از ریکت"
       },
       "officeFabricIconFontName": "Page",
       "properties": {
         "description": "ReactCRUD"
+      },
+      "dependencies": {
+        "sp-http": "1.0.0"
       }
     }
   ]
