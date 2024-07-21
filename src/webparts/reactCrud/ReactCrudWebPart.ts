@@ -6,11 +6,9 @@ import {
   IPropertyPaneConfiguration,
   PropertyPaneTextField
 } from '@microsoft/sp-webpart-base';
-
 import * as strings from 'ReactCrudWebPartStrings';
 import ReactCrud from './components/ReactCrud';
 import { IReactCrudProps } from './components/IReactCrudProps';
-
 import { sp } from "@pnp/sp";
 
 export interface IReactCrudWebPartProps {
@@ -20,7 +18,7 @@ export interface IReactCrudWebPartProps {
 export default class ReactCrudWebPart extends BaseClientSideWebPart<IReactCrudWebPartProps> {
 
   public render(): void {
-    const element: React.ReactElement<IReactCrudProps > = React.createElement(
+    const element: React.ReactElement<IReactCrudProps> = React.createElement(
       ReactCrud,
       {
         listName: this.properties.listName,
@@ -38,13 +36,14 @@ export default class ReactCrudWebPart extends BaseClientSideWebPart<IReactCrudWe
     return Version.parse('1.0');
   }
 
-    public onInit(): Promise<void> {
-      return super.onInit().then(_ => {
-        sp.setup({
-          spfxContext: this.context
-        });
+  public onInit(): Promise<void> {
+    return super.onInit().then(_ => {
+      sp.setup({
+        spfxContext: this.context
       });
-    }
+    });
+  }
+
   protected getPropertyPaneConfiguration(): IPropertyPaneConfiguration {
     return {
       pages: [
