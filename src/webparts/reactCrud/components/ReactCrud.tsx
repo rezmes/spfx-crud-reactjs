@@ -19,7 +19,8 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     this.state = {
       status: 'Ready',
       items: [],
-      newItemTitle: '' // Initialize newItemTitle
+      newItemTitle: '', // Initialize newItemTitle
+      newItemBillTo: '' // Initialize newItemBillTo
     };
   }
 
@@ -31,7 +32,7 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     try {
       const listItems = await sp.web.lists
         .getByTitle(this.props.listName)
-        .items.select("Id", "Title")
+        .items.select("Id", "Title", "billTo")
         .get<IListItem[]>();
 
       this.setState({
@@ -50,7 +51,8 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
 private async createListItem(){
 try {
   await sp.web.lists.getByTitle(this.props.listName).items.add({
-    Title: this.state.newItemTitle
+    Title: this.state.newItemTitle,
+    billTo: this.state.newItemBillTo // Include billTo in the create statement
   });
 
 this.setState({status: `Item created successfully`, newItemTitle: ''});
@@ -64,9 +66,28 @@ this.setState({status:`Error: ${err.message}`});
 private handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
   this.setState({ newItemTitle: event.target.value });
 }
+
+// Handle input changes for billTo
+private handleBillToChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  this.setState({ newItemBillTo: event.target.value });
+}
+
 private handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
   event.preventDefault();
   this.createListItem();
+}
+
+
+// DELET method
+private async deleteListItem(id: number) {
+  try {
+    await sp.web.lists.getByTitle(this.props.listName).items.getById(id).delete();
+
+    this.setState({ status: `Item deleted successfully` });
+    await this.getListItems(); // Refresh the list
+  } catch (err) {
+    this.setState({ status: `Error: ${err.message}` });
+  }
 }
 
   public render(): React.ReactElement<IReactCrudProps> {
@@ -84,7 +105,11 @@ private handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 
               <ul>
                 {this.state.items.map((item) => (
-                  <li key={item.Id}>{item.Title}</li>
+                  <li key={item.Id}>
+                    {item.Title} - {item.billTo}
+                    <button onClick={() => this.deleteListItem(item.Id)}>Delete</button> {/* Add delete button */}
+
+                  </li>
                 ))}
               </ul>
               <p>{this.state.status}</p>
@@ -92,6 +117,13 @@ private handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 
               <form action="#" onSubmit={this.handleFormSubmit} className="ms-Grid-row">
                 <input type="text" value={this.state.newItemTitle} onChange={this.handleInputChange} placeholder='Enter new item' required />
+                <input
+                type="text"
+                value={this.state.newItemBillTo}
+                onChange={this.handleBillToChange}
+                placeholder='Enter billTo'
+                required
+              />
                 <button type='submit'>Create</button>
               </form>
 
