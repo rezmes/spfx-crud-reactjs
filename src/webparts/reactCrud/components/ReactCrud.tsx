@@ -18,7 +18,8 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
 
     this.state = {
       status: 'Ready',
-      items: []
+      items: [],
+      newItemTitle: '' // Initialize newItemTitle
     };
   }
 
@@ -44,6 +45,30 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
       });
     }
   }
+
+// CREATE
+private async createListItem(){
+try {
+  await sp.web.lists.getByTitle(this.props.listName).items.add({
+    Title: this.state.newItemTitle
+  });
+
+this.setState({status: `Item created successfully`, newItemTitle: ''});
+await this.getListItems(); //Refresh the list
+}catch(err){
+this.setState({status:`Error: ${err.message}`});
+}
+}
+
+//handle input change
+private handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  this.setState({ newItemTitle: event.target.value });
+}
+private handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
+  this.createListItem();
+}
+
   public render(): React.ReactElement<IReactCrudProps> {
 
 
@@ -64,6 +89,11 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
               </ul>
               <p>{this.state.status}</p>
 
+
+              <form action="#" onSubmit={this.handleFormSubmit} className="ms-Grid-row">
+                <input type="text" value={this.state.newItemTitle} onChange={this.handleInputChange} placeholder='Enter new item' required />
+                <button type='submit'>Create</button>
+              </form>
 
 
             </div>
