@@ -20,7 +20,10 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
       status: 'Ready',
       items: [],
       newItemTitle: '', // Initialize newItemTitle
-      newItemBillTo: '' // Initialize newItemBillTo
+      newItemBillTo: '', // Initialize newItemBillTo
+      updateItemId: null,
+      updateItemTitle: '',
+      updateItemBillTo: ''
     };
   }
 
@@ -90,6 +93,46 @@ private async deleteListItem(id: number) {
   }
 }
 
+// Set the item to be updated
+private setUpdateItem(item: IListItem) {
+  this.setState({
+    updateItemId: item.Id,
+    updateItemTitle: item.Title,
+    updateItemBillTo: item.billTo
+  });
+}
+
+// Handle input changes for update
+private handleUpdateTitleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  this.setState({ updateItemTitle: event.target.value });
+}
+private handleUpdateBillToChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  this.setState({ updateItemBillTo: event.target.value });
+}
+
+// Update the item
+private async updateListItem() {
+  try {
+    if (this.state.updateItemId !== null) {
+      await sp.web.lists.getByTitle(this.props.listName).items.getById(this.state.updateItemId).update({
+        Title: this.state.updateItemTitle,
+        billTo: this.state.updateItemBillTo
+      });
+
+      this.setState({ status: `Item updated successfully`, updateItemId: null, updateItemTitle: '', updateItemBillTo: '' });
+      await this.getListItems(); // Refresh the list
+    }
+  } catch (err) {
+    this.setState({ status: `Error: ${err.message}` });
+  }
+}
+
+// Handle form submit for update
+private handleUpdateFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
+  this.updateListItem();
+}
+
   public render(): React.ReactElement<IReactCrudProps> {
 
 
@@ -107,6 +150,7 @@ private async deleteListItem(id: number) {
                 {this.state.items.map((item) => (
                   <li key={item.Id}>
                     {item.Title} - {item.billTo}
+                    <button onClick={() => this.setUpdateItem(item)}>Update</button> {/* Add update button */}
                     <button onClick={() => this.deleteListItem(item.Id)}>Delete</button> {/* Add delete button */}
 
                   </li>
@@ -115,17 +159,47 @@ private async deleteListItem(id: number) {
               <p>{this.state.status}</p>
 
 
-              <form action="#" onSubmit={this.handleFormSubmit} className="ms-Grid-row">
-                <input type="text" value={this.state.newItemTitle} onChange={this.handleInputChange} placeholder='Enter new item' required />
-                <input
+            {/* Form for creating new item */}
+            <form action="#" onSubmit={this.handleFormSubmit} className="ms-Grid-row">
+              <input
+                type="text"
+                value={this.state.newItemTitle}
+                onChange={this.handleInputChange}
+                placeholder='Enter new item'
+                required
+              />
+              <input
                 type="text"
                 value={this.state.newItemBillTo}
                 onChange={this.handleBillToChange}
                 placeholder='Enter billTo'
                 required
               />
-                <button type='submit'>Create</button>
+              <button type='submit'>Create</button>
+            </form>
+
+            {/* Form for updating existing item */}
+            {this.state.updateItemId !== null && (
+              <form action="#" onSubmit={this.handleUpdateFormSubmit} className="ms-Grid-row">
+                <input
+                  type="text"
+                  value={this.state.updateItemTitle}
+                  onChange={this.handleUpdateTitleChange}
+                  placeholder='Update item title'
+                  required
+                />
+                <input
+                  type="text"
+                  value={this.state.updateItemBillTo}
+                  onChange={this.handleUpdateBillToChange}
+                  placeholder='Update billTo'
+                  required
+                />
+                <button type='submit'>Update</button>
+                <button type='button' onClick={() => this.setState({ updateItemId: null, updateItemTitle: '', updateItemBillTo: '' })}>Cancel</button>
               </form>
+            )}
+
 
 
             </div>

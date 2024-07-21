@@ -5,4 +5,8 @@ export interface IReactCrudState {
   items: IListItem[];
   newItemTitle: string; // Add this line
   newItemBillTo: string; // Add this line
+    // Add these for update operation
+    updateItemId: number | null;
+    updateItemTitle: string;
+    updateItemBillTo: string;
 }
