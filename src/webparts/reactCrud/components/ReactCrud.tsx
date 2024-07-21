@@ -135,7 +135,11 @@ private handleUpdateFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 
   public render(): React.ReactElement<IReactCrudProps> {
 
-
+const items: JSX.Element[] = this.state.items.map((item: IListItem, i:number):JSX.Element=>{
+  return(
+    <li> {i+1}. {item.Title} - {item.billTo}</li>
+  )
+})
     return (
       <div className={ styles.reactCrud }>
         <div className={ styles.container }>
@@ -144,7 +148,9 @@ private handleUpdateFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
               <span className={ styles.title }>Welcome to SharePoint!</span>
               <p className={ styles.subTitle }>Customize SharePoint experiences using Web Parts.</p>
               <p className={ styles.description }>{escape(this.props.listName)}</p>
-
+<ul>
+  {items}
+</ul>
 
               <ul>
                 {this.state.items.map((item) => (
