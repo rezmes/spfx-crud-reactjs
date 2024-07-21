@@ -195,7 +195,7 @@ private handleUpdateFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                   placeholder='Update billTo'
                   required
                 />
-                <button type='submit'>Update</button>
+                <button className={styles['update-button']} type='submit'>Update</button>
                 <button type='button' onClick={() => this.setState({ updateItemId: null, updateItemTitle: '', updateItemBillTo: '' })}>Cancel</button>
               </form>
             )}
