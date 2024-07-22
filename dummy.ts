@@ -4,22 +4,20 @@ import { IReactCrudProps } from './IReactCrudProps';
 import { IReactCrudState } from './IReactCrudState';
 import { escape } from '@microsoft/sp-lodash-subset';
 import { sp } from "@pnp/sp";
-import "@pnp/sp/webs"; // Import webs to add 'sp.web'
-import "@pnp/sp/lists"; // Import lists to add 'sp.web.lists'
-import "@pnp/sp/items"; // Import items to work with list items
+import "@pnp/sp/webs";
+import "@pnp/sp/lists";
+import "@pnp/sp/items";
 import { IListItem } from "./IListItem";
-
-
 
 export default class ReactCrud extends React.Component<IReactCrudProps, IReactCrudState> {
 
-  constructor(props: IReactCrudProps, state: IReactCrudState) {
+  constructor(props: IReactCrudProps) {
     super(props);
 
     this.state = {
       status: 'Ready',
       items: [],
-      newItemTitle: '' // Add this line to define the newItemTitle property
+      newItemTitle: '' // Initialize newItemTitle
     };
   }
 
@@ -69,8 +67,6 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
   }
 
   public render(): React.ReactElement<IReactCrudProps> {
-
-
     return (
       <div className={ styles.reactCrud }>
         <div className={ styles.container }>
@@ -79,7 +75,6 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
               <span className={ styles.title }>Welcome to SharePoint!</span>
               <p className={ styles.subTitle }>Customize SharePoint experiences using Web Parts.</p>
               <p className={ styles.description }>{escape(this.props.listName)}</p>
-
 
               <ul>
                 {this.state.items.map((item) => (
@@ -97,7 +92,7 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
                   required
                 />
                 <button type="submit">Create</button>
-                </form>
+              </form>
 
             </div>
           </div>

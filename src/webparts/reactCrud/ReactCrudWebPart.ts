@@ -20,7 +20,7 @@ export interface IReactCrudWebPartProps {
 export default class ReactCrudWebPart extends BaseClientSideWebPart<IReactCrudWebPartProps> {
 
   public render(): void {
-    const element: React.ReactElement<IReactCrudProps > = React.createElement(
+    const element: React.ReactElement<IReactCrudProps> = React.createElement(
       ReactCrud,
       {
         listName: this.properties.listName,

@@ -1,38 +1,59 @@
+// {
+//   "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+//   "id": "bda5effd-e0ee-4e5a-af56-24f49158dcf7",
+//   "alias": "ReactCrudWebPart",
+//   "componentType": "WebPart",
+
+//   // The "*" signifies that the version should be taken from the package.json
+//   "version": "*",
+//   "manifestVersion": 2,
+
+//   // If true, the component can only be installed on sites where Custom Script is allowed.
+//   // Components that allow authors to embed arbitrary script code should set this to true.
+//   // https://support.office.com/en-us/article/Turn-scripting-capabilities-on-or-off-1f2c515f-5d7e-448a-9fd7-835da935584f
+//   "requiresCustomScript": true,
+
+//   "preconfiguredEntries": [
+//     {
+//       "groupId": "5c03119e-3074-46fd-976b-c60198311f70", // Other
+//       "group": { "default": "Other" },
+//       "title": {
+//         "default": "ReactCRUD",
+//         "en-us": "ReactCRUD",
+//         "fa-IR": "کراد ریکت"
+//       },
+//       "description": {
+//         "default": "CRUD operations with React JS",
+//         "en-us": "CRUD operations with React JS",
+//         "fa-IR": "عملکرد کراد با استفاده از ریکت"
+//       },
+//       "officeFabricIconFontName": "Page",
+//       "properties": {
+//         "description": "ReactCRUD"
+//       },
+//       "dependencies": {
+//         "sp-http": "1.0.0"
+//       }
+//     }
+//   ]
+// }
 {
   "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
-  "id": "bda5effd-e0ee-4e5a-af56-24f49158dcf7",
+  "id": "27529c72-27c5-449b-80a1-d4fa8a0e2042",
   "alias": "ReactCrudWebPart",
   "componentType": "WebPart",
-
-  // The "*" signifies that the version should be taken from the package.json
-  "version": "*",
+  "version": "1.0.0",
   "manifestVersion": 2,
-
-  // If true, the component can only be installed on sites where Custom Script is allowed.
-  // Components that allow authors to embed arbitrary script code should set this to true.
-  // https://support.office.com/en-us/article/Turn-scripting-capabilities-on-or-off-1f2c515f-5d7e-448a-9fd7-835da935584f
-  "requiresCustomScript": true,
 
   "preconfiguredEntries": [
     {
-      "groupId": "5c03119e-3074-46fd-976b-c60198311f70", // Other
+      "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
       "group": { "default": "Other" },
-      "title": {
-        "default": "ReactCRUD",
-        "en-us": "ReactCRUD",
-        "fa-IR": "کراد ریکت"
-      },
-      "description": {
-        "default": "CRUD operations with React JS",
-        "en-us": "CRUD operations with React JS",
-        "fa-IR": "عملکرد کراد با استفاده از ریکت"
-      },
+      "title": { "default": "React CRUD" },
+      "description": { "default": "A simple CRUD web part using React." },
       "officeFabricIconFontName": "Page",
       "properties": {
-        "description": "ReactCRUD"
-      },
-      "dependencies": {
-        "sp-http": "1.0.0"
+        "listName": "ListName"
       }
     }
   ]
