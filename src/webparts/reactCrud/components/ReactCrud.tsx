@@ -8,6 +8,7 @@ import "@pnp/sp/webs"; // Import webs to add 'sp.web'
 import "@pnp/sp/lists"; // Import lists to add 'sp.web.lists'
 import "@pnp/sp/items"; // Import items to work with list items
 import { IListItem } from "./IListItem";
+import { Item } from '@pnp/sp/items';
 
 
 
@@ -49,6 +50,16 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
       });
     }
   }
+
+  private escapeHtml = (unsafe: string) => {
+    return unsafe
+      .replace(/&/g, "&")
+      .replace(/</g, "<")
+      .replace(/>/g, ">")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
 
 // CREATE
 private async createListItem(){
@@ -94,6 +105,7 @@ private async deleteListItem(id: number) {
 }
 
 // Set the item to be updated
+
 private setUpdateItem(item: IListItem) {
   this.setState({
     updateItemId: item.Id,
@@ -104,10 +116,13 @@ private setUpdateItem(item: IListItem) {
 
 // Handle input changes for update
 private handleUpdateTitleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+
   this.setState({ updateItemTitle: event.target.value });
 }
 private handleUpdateBillToChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-  this.setState({ updateItemBillTo: event.target.value });
+  const sanitizedInput = this.escapeHtml(event.target.value);
+  console.log(sanitizedInput);
+  this.setState({ updateItemBillTo: sanitizedInput });
 }
 
 // Update the item
@@ -131,13 +146,13 @@ private async updateListItem() {
 private handleUpdateFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
   event.preventDefault();
   this.updateListItem();
-}
+  }
 
   public render(): React.ReactElement<IReactCrudProps> {
 
 const items: JSX.Element[] = this.state.items.map((item: IListItem, i:number):JSX.Element=>{
   return(
-    <li> {i+1}. {item.Title} - {item.billTo}</li>
+    <li> {i+1}. {item.Title} - <span dangerouslySetInnerHTML={{ __html: item.billTo }} /></li>
   )
 })
     return (
@@ -155,7 +170,7 @@ const items: JSX.Element[] = this.state.items.map((item: IListItem, i:number):JS
               <ul>
                 {this.state.items.map((item) => (
                   <li key={item.Id}>
-                    {item.Title} - {item.billTo}
+                    {item.Title} - <span dangerouslySetInnerHTML={{ __html: item.billTo }} />
                     <button onClick={() => this.setUpdateItem(item)}>Update</button> {/* Add update button */}
                     <button onClick={() => this.deleteListItem(item.Id)}>Delete</button> {/* Add delete button */}
 
@@ -196,12 +211,12 @@ const items: JSX.Element[] = this.state.items.map((item: IListItem, i:number):JS
                 />
                 <input
                   type="text"
-                  value={this.state.updateItemBillTo}
+                  value={escape(this.state.updateItemBillTo)}
                   onChange={this.handleUpdateBillToChange}
                   placeholder='Update billTo'
                   required
                 />
-                <button className={styles['update-button']} type='submit'>Update</button>
+                <button className={styles['update-button']} type='submit'>Update4</button>
                 <button type='button' onClick={() => this.setState({ updateItemId: null, updateItemTitle: '', updateItemBillTo: '' })}>Cancel</button>
               </form>
             )}
