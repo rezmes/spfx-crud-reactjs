@@ -4,44 +4,44 @@ import { IReactCrudProps } from './IReactCrudProps';
 import { IReactCrudState } from './IReactCrudState';
 import { escape } from '@microsoft/sp-lodash-subset';
 import { sp } from "@pnp/sp";
-import "@pnp/sp/webs"; // Import webs to add 'sp.web'
-import "@pnp/sp/lists"; // Import lists to add 'sp.web.lists'
-import "@pnp/sp/items"; // Import items to work with list items
-import { IListItem } from "./IListItem";
-import { Item } from '@pnp/sp/items';
-
-
+import "@pnp/sp/webs";
+import "@pnp/sp/lists";
+import "@pnp/sp/items";
+import { IProformaItem } from './IProformaItem';
+import { IInvoiceItem } from './IInvoiceItem';
+import { IListItem } from './IListItem';
 
 export default class ReactCrud extends React.Component<IReactCrudProps, IReactCrudState> {
 
-  constructor(props: IReactCrudProps, state: IReactCrudState) {
+  constructor(props: IReactCrudProps) {
     super(props);
 
     this.state = {
       status: 'Ready',
       items: [],
-      newItemTitle: '', // Initialize newItemTitle
-      newItemBillTo: '', // Initialize newItemBillTo
-      updateItemId: null,
-      updateItemTitle: '',
-      updateItemBillTo: ''
+      proforma: {
+        Title: '',
+        ProformaNumber: '',
+        Created: new Date()
+      },
+      invoiceItems: []
     };
   }
 
   public async componentDidMount() {
-    await this.getListItems();
+    await this.getProformaItems();
   }
 
-  private async getListItems() {
+  private async getProformaItems() {
     try {
-      const listItems = await sp.web.lists
+      const proformaItems = await sp.web.lists
         .getByTitle(this.props.listName)
-        .items.select("Id", "Title", "billTo")
+        .items.select("Id", "Title")
         .get<IListItem[]>();
 
       this.setState({
-        status: `Fetched ${listItems.length} items`,
-        items: listItems
+        status: `Fetched ${proformaItems.length} items`,
+        items: proformaItems
       });
     } catch (err) {
       this.setState({
@@ -51,178 +51,181 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     }
   }
 
-  private escapeHtml = (unsafe: string) => {
-    return unsafe
-      .replace(/&/g, "&")
-      .replace(/</g, "<")
-      .replace(/>/g, ">")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
-
-// CREATE
-private async createListItem(){
-try {
-  await sp.web.lists.getByTitle(this.props.listName).items.add({
-    Title: this.state.newItemTitle,
-    billTo: this.state.newItemBillTo // Include billTo in the create statement
-  });
-
-this.setState({status: `Item created successfully`, newItemTitle: ''});
-await this.getListItems(); //Refresh the list
-}catch(err){
-this.setState({status:`Error: ${err.message}`});
-}
-}
-
-//handle input change
-private handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-  this.setState({ newItemTitle: event.target.value });
-}
-
-// Handle input changes for billTo
-private handleBillToChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-  this.setState({ newItemBillTo: event.target.value });
-}
-
-private handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-  event.preventDefault();
-  this.createListItem();
-}
-
-
-// DELET method
-private async deleteListItem(id: number) {
-  try {
-    await sp.web.lists.getByTitle(this.props.listName).items.getById(id).delete();
-
-    this.setState({ status: `Item deleted successfully` });
-    await this.getListItems(); // Refresh the list
-  } catch (err) {
-    this.setState({ status: `Error: ${err.message}` });
-  }
-}
-
-// Set the item to be updated
-
-private setUpdateItem(item: IListItem) {
-  this.setState({
-    updateItemId: item.Id,
-    updateItemTitle: item.Title,
-    updateItemBillTo: item.billTo
-  });
-}
-
-// Handle input changes for update
-private handleUpdateTitleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-
-  this.setState({ updateItemTitle: event.target.value });
-}
-private handleUpdateBillToChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-  const sanitizedInput = this.escapeHtml(event.target.value);
-  console.log(sanitizedInput);
-  this.setState({ updateItemBillTo: sanitizedInput });
-}
-
-// Update the item
-private async updateListItem() {
-  try {
-    if (this.state.updateItemId !== null) {
-      await sp.web.lists.getByTitle(this.props.listName).items.getById(this.state.updateItemId).update({
-        Title: this.state.updateItemTitle,
-        billTo: this.state.updateItemBillTo
+  private async createProforma() {
+    try {
+      // Create the Proforma item
+      const proforma = await sp.web.lists.getByTitle('ProformaList').items.add({
+        Title: this.state.proforma.Title,
+        ProformaNumber: this.state.proforma.ProformaNumber,
+        Created: this.state.proforma.Created
       });
 
-      this.setState({ status: `Item updated successfully`, updateItemId: null, updateItemTitle: '', updateItemBillTo: '' });
-      await this.getListItems(); // Refresh the list
-    }
-  } catch (err) {
-    this.setState({ status: `Error: ${err.message}` });
-  }
-}
+      const proformaID = proforma.data.Id;
 
-// Handle form submit for update
-private handleUpdateFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-  event.preventDefault();
-  this.updateListItem();
+      // Log the proformaID and invoice items
+      console.log('Proforma ID:', proformaID);
+      console.log('Invoice Items:', this.state.invoiceItems);
+
+      // Create the Invoice items
+      for (const item of this.state.invoiceItems) {
+        const invoiceData = {
+          ProformaID: proformaID,
+          ItemName: item.ItemName,
+          ItemNumber: item.ItemNumber,
+          PricePerUnit: item.PricePerUnit,
+          TotalPrice: item.ItemNumber * item.PricePerUnit
+        };
+
+        // Log the invoiceData before sending it to SharePoint
+        console.log('Invoice Data:', invoiceData);
+
+        await sp.web.lists.getByTitle('invoiceList').items.add(invoiceData);
+      }
+
+      this.setState({
+        status: 'Proforma and items created successfully',
+        proforma: { Title: '', ProformaNumber: '', Created: new Date() },
+        invoiceItems: []
+      });
+      await this.getProformaItems(); // Refresh the list
+    } catch (err) {
+      this.setState({ status: `Error: ${err.message}` });
+    }
+  }
+
+
+  private handleProformaInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    this.setState(prevState => ({
+      proforma: { ...prevState.proforma, [name]: value }
+    }));
+  }
+
+  private handleInvoiceInputChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    const newInvoiceItems = [...this.state.invoiceItems];
+    newInvoiceItems[index] = { ...newInvoiceItems[index], [name]: value };
+    this.setState({ invoiceItems: newInvoiceItems });
+  }
+
+  private addInvoiceItem = () => {
+    this.setState(prevState => ({
+      invoiceItems: [...prevState.invoiceItems, { ProformaID: 0, ItemName: '', ItemNumber: 0, PricePerUnit: 0, TotalPrice: 0 }]
+    }));
+  }
+
+  private handleProformaFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    this.createProforma();
   }
 
   public render(): React.ReactElement<IReactCrudProps> {
-
-const items: JSX.Element[] = this.state.items.map((item: IListItem, i:number):JSX.Element=>{
-  return(
-    <li> {i+1}. {item.Title} - <span dangerouslySetInnerHTML={{ __html: item.billTo }} /></li>
-  )
-})
     return (
-      <div className={ styles.reactCrud }>
-        <div className={ styles.container }>
-          <div className={ styles.row }>
-            <div className={ styles.column }>
-              <span className={ styles.title }>Welcome to SharePoint!</span>
-              <p className={ styles.subTitle }>Customize SharePoint experiences using Web Parts.</p>
-              <p className={ styles.description }>{escape(this.props.listName)}</p>
-<ul>
-  {items}
-</ul>
+      <div className={styles.reactCrud}>
+        <div className={styles.container}>
+          <div className={styles.row}>
+            <div className={styles.column}>
+              <span className={styles.title}>Welcome to SharePoint!</span>
+              <p className={styles.subTitle}>Customize SharePoint experiences using Web Parts.</p>
+              <p className={styles.description}>{escape(this.props.listName)}</p>
 
               <ul>
                 {this.state.items.map((item) => (
-                  <li key={item.Id}>
-                    {item.Title} - <span dangerouslySetInnerHTML={{ __html: item.billTo }} />
-                    <button onClick={() => this.setUpdateItem(item)}>Update</button> {/* Add update button */}
-                    <button onClick={() => this.deleteListItem(item.Id)}>Delete</button> {/* Add delete button */}
-
-                  </li>
+                  <li key={item.Id}>{item.Title}</li>
                 ))}
               </ul>
               <p>{this.state.status}</p>
 
-
-            {/* Form for creating new item */}
-            <form action="#" onSubmit={this.handleFormSubmit} className="ms-Grid-row">
-              <input
-                type="text"
-                value={this.state.newItemTitle}
-                onChange={this.handleInputChange}
-                placeholder='Enter new item'
-                required
-              />
-              <input
-                type="text"
-                value={this.state.newItemBillTo}
-                onChange={this.handleBillToChange}
-                placeholder='Enter billTo'
-                required
-              />
-              <button type='submit'>Create</button>
-            </form>
-
-            {/* Form for updating existing item */}
-            {this.state.updateItemId !== null && (
-              <form action="#" onSubmit={this.handleUpdateFormSubmit} className="ms-Grid-row">
-                <input
-                  type="text"
-                  value={this.state.updateItemTitle}
-                  onChange={this.handleUpdateTitleChange}
-                  placeholder='Update item title'
-                  required
-                />
-                <input
-                  type="text"
-                  value={escape(this.state.updateItemBillTo)}
-                  onChange={this.handleUpdateBillToChange}
-                  placeholder='Update billTo'
-                  required
-                />
-                <button className={styles['update-button']} type='submit'>Update4</button>
-                <button type='button' onClick={() => this.setState({ updateItemId: null, updateItemTitle: '', updateItemBillTo: '' })}>Cancel</button>
+              <form onSubmit={this.handleProformaFormSubmit}>
+                <div>
+                  <label htmlFor="Title">Customer Name</label>
+                  <input
+                    type="text"
+                    id="Title"
+                    name="Title"
+                    value={this.state.proforma.Title}
+                    onChange={this.handleProformaInputChange}
+                    placeholder="Enter customer name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="ProformaNumber">Proforma Number</label>
+                  <input
+                    type="text"
+                    id="ProformaNumber"
+                    name="ProformaNumber"
+                    value={this.state.proforma.ProformaNumber}
+                    onChange={this.handleProformaInputChange}
+                    placeholder="Enter Proforma number"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="Created">Created Date</label>
+                  <input
+                    type="date"
+                    id="Created"
+                    name="Created"
+                    value={this.state.proforma.Created.toISOString().split('T')[0]}
+                    onChange={this.handleProformaInputChange}
+                    readOnly
+                  />
+                </div>
+                <button type="button" onClick={this.addInvoiceItem}>Add Item</button>
+                {this.state.invoiceItems.map((item, index) => (
+                  <div key={index}>
+                    <div>
+                      <label htmlFor={`ItemName-${index}`}>Item Name</label>
+                      <input
+                        type="text"
+                        id={`ItemName-${index}`}
+                        name="ItemName"
+                        value={item.ItemName}
+                        onChange={(e) => this.handleInvoiceInputChange(index, e)}
+                        placeholder="Enter item name"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor={`ItemNumber-${index}`}>Item Number</label>
+                      <input
+                        type="number"
+                        id={`ItemNumber-${index}`}
+                        name="ItemNumber"
+                        value={item.ItemNumber}
+                        onChange={(e) => this.handleInvoiceInputChange(index, e)}
+                        placeholder="Enter item number"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor={`PricePerUnit-${index}`}>Price Per Unit</label>
+                      <input
+                        type="number"
+                        id={`PricePerUnit-${index}`}
+                        name="PricePerUnit"
+                        value={item.PricePerUnit}
+                        onChange={(e) => this.handleInvoiceInputChange(index, e)}
+                        placeholder="Enter price per unit"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor={`TotalPrice-${index}`}>Total Price</label>
+                      <input
+                        type="number"
+                        id={`TotalPrice-${index}`}
+                        name="TotalPrice"
+                        value={item.ItemNumber * item.PricePerUnit}
+                        readOnly
+                        placeholder="Total price"
+                      />
+                    </div>
+                  </div>
+                ))}
+                <button type="submit">Create Proforma</button>
               </form>
-            )}
-
-
-
             </div>
           </div>
         </div>

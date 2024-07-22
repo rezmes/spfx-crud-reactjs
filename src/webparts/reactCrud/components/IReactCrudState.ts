@@ -1,12 +1,10 @@
 import { IListItem } from './IListItem';
+import { IProformaItem } from './IProformaItem';
+import { IInvoiceItem } from './IInvoiceItem';
 
 export interface IReactCrudState {
   status: string;
   items: IListItem[];
-  newItemTitle: string; // Add this line
-  newItemBillTo: string; // Add this line
-    // Add these for update operation
-    updateItemId: number | null;
-    updateItemTitle: string;
-    updateItemBillTo: string;
+  proforma: IProformaItem;
+  invoiceItems: IInvoiceItem[];
 }
