@@ -93,3 +93,54 @@
 .reactCrud .update-button:hover {
   background-color: darkblue;
 }
+
+.reactCrud {
+  .container {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .column {
+    flex: 1;
+    padding: 10px;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f4f4f4;
+    }
+  }
+
+  .form-group {
+    margin-bottom: 15px;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .form-group input, .form-group button {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .form-group button {
+    margin-top: 10px;
+  }
+}
+

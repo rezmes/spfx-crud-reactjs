@@ -13,4 +13,5 @@ export interface IInvoiceItem {
   PricePerUnit: number;
   TotalPrice: number; // If you are using this for display purposes only
   isEditing?: boolean; // Optional property
+  rowNumber: number;
 }
