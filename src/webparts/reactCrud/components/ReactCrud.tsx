@@ -28,7 +28,8 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
       tax: 0,
       addedValue: 0,
       totalSum: 0,
-      viewMode: 'initial'
+      viewMode: 'initial',
+      selectedProformaId: null
     };
   }
 
@@ -40,7 +41,7 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     try {
       const proformaItems = await sp.web.lists
         .getByTitle(this.props.listName)
-        .items.select("Id", "Title")
+        .items.select("Id", "Title", "ProformaNumber", "CustomerName")
         .get<IListItem[]>();
 
       this.setState({
@@ -184,6 +185,28 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
   private handleCreateProformaClick = async () => {
     await this.generateProformaNumber();
     this.setState({ viewMode: 'create' });
+    this.addInvoiceItem();
+  }
+
+  private handleViewProformaClick = () => {
+    this.setState({ viewMode: 'view' });
+  }
+
+  private handleSelectProforma = async (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedProformaId = Number(event.target.value);
+    if (selectedProformaId) {
+      const selectedProforma = this.state.items.find(item => item.Id === selectedProformaId);
+      if (selectedProforma) {
+        this.setState({
+          proforma: {
+            CustomerName: selectedProforma.CustomerName,
+            ProformaNumber: selectedProforma.ProformaNumber
+          },
+          selectedProformaId
+        });
+        await this.getInvoiceItems(selectedProformaId);
+      }
+    }
   }
 
   private handleCancelForm = () => {
@@ -218,8 +241,16 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     }
   }
 
+  private handleEditInvoiceItem = (index: number) => {
+    this.setState({ editIndex: index });
+  }
+
+  private handleSaveInvoiceItem = () => {
+    this.setState({ editIndex: null });
+  }
+
   public render(): React.ReactElement<IReactCrudProps> {
-    const { viewMode, proforma, invoiceItems, totalSum, tax, addedValue } = this.state;
+    const { viewMode, proforma, invoiceItems, totalSum, tax, addedValue, items, selectedProformaId, editIndex } = this.state;
 
     return (
       <div className={styles.reactCrud}>
@@ -231,8 +262,11 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
               <p className={styles.description}>{escape(this.props.listName)}</p>
 
               {viewMode === 'initial' ? (
-                <button onClick={this.handleCreateProformaClick}>Create Proforma</button>
-              ) : (
+                <>
+                  <button onClick={this.handleCreateProformaClick}>Create Proforma</button>
+                  <button onClick={this.handleViewProformaClick}>View Proforma</button>
+                </>
+              ) : viewMode === 'create' ? (
                 <form onSubmit={this.handleProformaFormSubmit}>
                   <div className={styles['form-group']}>
                     <label htmlFor="CustomerName">Customer Name</label>
@@ -267,6 +301,7 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
                         <th>Item Number</th>
                         <th>Price per Unit</th>
                         <th>Total Price</th>
+                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -310,6 +345,10 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
                             />
                           </td>
                           <td>{item.itemNumber * item.PricePerUnit}</td>
+                          <td>
+                            <button type="button" onClick={() => this.handleEditInvoiceItem(index)}>Edit</button>
+                            <button type="button" onClick={() => this.deleteProforma(item.Id)}>Delete</button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -326,6 +365,48 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
                   <button type="submit">Submit</button>
                   <button type="button" onClick={this.handleCancelForm}>Cancel</button>
                 </form>
+              ) : (
+                <div>
+                  <select onChange={this.handleSelectProforma}>
+                    <option value="">Select Proforma</option>
+                    {items.map(item => (
+                      <option key={item.Id} value={item.Id}>{item.Title} - {item.ProformaNumber}</option>
+                    ))}
+                  </select>
+                  {selectedProformaId && (
+                    <>
+                      <p>Customer Name: {proforma.CustomerName}</p>
+                      <p>Proforma Number: {proforma.ProformaNumber}</p>
+                      <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <th>Row Number</th>
+                            <th>Item Name</th>
+                            <th>Item Number</th>
+                            <th>Price per Unit</th>
+                            <th>Total Price</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoiceItems.map((item, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>{item.ItemName}</td>
+                              <td>{item.itemNumber}</td>
+                              <td>{item.PricePerUnit}</td>
+                              <td>{item.itemNumber * item.PricePerUnit}</td>
+                              <td>
+                                <button type="button" onClick={() => this.handleEditInvoiceItem(index)}>Edit</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <button type="button" onClick={this.handleCancelForm}>Back</button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>
