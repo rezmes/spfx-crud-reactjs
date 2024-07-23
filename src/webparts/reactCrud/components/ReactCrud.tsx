@@ -195,7 +195,15 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
   private handleSelectProforma = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedProformaId = Number(event.target.value);
     if (selectedProformaId) {
-      const selectedProforma = this.state.items.find(item => item.Id === selectedProformaId);
+
+      let selectedProforma = null;
+for (const item of this.state.items) {
+  if (item.Id === selectedProformaId) {
+    selectedProforma = item;
+    break;
+  }
+}
+
       if (selectedProforma) {
         this.setState({
           proforma: {
