@@ -1,5 +1,4 @@
 export interface IProformaItem {
-  Title: string;
+  CustomerName: string;
   ProformaNumber: string;
-  Created: Date
 }

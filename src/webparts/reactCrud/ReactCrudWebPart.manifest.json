@@ -26,7 +26,7 @@
       "officeFabricIconFontName": "Page",
       "properties": {
         "description": "ReactCRUD",
-        "listName": "invoiceList" // Set the default list name here
+        "listName": "listName" // Set the default list name here
       }
     }
   ]

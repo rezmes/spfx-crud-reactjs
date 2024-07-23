@@ -1,7 +1,6 @@
 export interface IInvoiceItem {
-  ProformaID: number;
   ItemName: string;
-  ItemNumber: number;
+  itemNumber: number;
   PricePerUnit: number;
-  TotalPrice: number;
+ // TotalPrice: number; // Calculated field
 }

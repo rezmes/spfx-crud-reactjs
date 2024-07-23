@@ -20,9 +20,8 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
       status: 'Ready',
       items: [],
       proforma: {
-        Title: '',
-        ProformaNumber: '',
-        Created: new Date()
+        CustomerName: '',
+        ProformaNumber: ''
       },
       invoiceItems: []
     };
@@ -55,9 +54,8 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     try {
       // Create the Proforma item
       const proforma = await sp.web.lists.getByTitle('ProformaList').items.add({
-        Title: this.state.proforma.Title,
-        ProformaNumber: this.state.proforma.ProformaNumber,
-        Created: this.state.proforma.Created
+        CustomerName: this.state.proforma.CustomerName,
+        ProformaNumber: this.state.proforma.ProformaNumber
       });
 
       const proformaID = proforma.data.Id;
@@ -66,33 +64,41 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
       console.log('Proforma ID:', proformaID);
       console.log('Invoice Items:', this.state.invoiceItems);
 
+      // Adding a small delay to ensure the Proforma item is fully created
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       // Create the Invoice items
       for (const item of this.state.invoiceItems) {
         const invoiceData = {
-          ProformaID: proformaID,
+          ProformaIDId: proformaID, // Ensure the lookup field is set correctly
           ItemName: item.ItemName,
-          ItemNumber: item.ItemNumber,
-          PricePerUnit: item.PricePerUnit,
-          TotalPrice: item.ItemNumber * item.PricePerUnit
+          itemNumber: Number(item.itemNumber), // Ensure it's a number
+          PricePerUnit: Number(item.PricePerUnit), // Ensure it's a number
+//          TotalPrice: Number(item.itemNumber) * Number(item.PricePerUnit) // Calculated field
         };
 
         // Log the invoiceData before sending it to SharePoint
         console.log('Invoice Data:', invoiceData);
+
+        // Validate the data before sending
+        if (!invoiceData.ItemName || isNaN(invoiceData.itemNumber) || isNaN(invoiceData.PricePerUnit)) {
+          throw new Error('Invalid invoice data');
+        }
 
         await sp.web.lists.getByTitle('invoiceList').items.add(invoiceData);
       }
 
       this.setState({
         status: 'Proforma and items created successfully',
-        proforma: { Title: '', ProformaNumber: '', Created: new Date() },
+        proforma: { CustomerName: '', ProformaNumber: '' },
         invoiceItems: []
       });
       await this.getProformaItems(); // Refresh the list
     } catch (err) {
+      console.error('Error details:', err); // Finding error
       this.setState({ status: `Error: ${err.message}` });
     }
   }
-
 
   private handleProformaInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -110,7 +116,7 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
 
   private addInvoiceItem = () => {
     this.setState(prevState => ({
-      invoiceItems: [...prevState.invoiceItems, { ProformaID: 0, ItemName: '', ItemNumber: 0, PricePerUnit: 0, TotalPrice: 0 }]
+      invoiceItems: [...prevState.invoiceItems, { ProformaID: 0, ItemName: '', itemNumber: 0, PricePerUnit: 0, TotalPrice: 0 }]
     }));
   }
 
@@ -138,12 +144,12 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
 
               <form onSubmit={this.handleProformaFormSubmit}>
                 <div>
-                  <label htmlFor="Title">Customer Name</label>
+                  <label htmlFor="CustomerName">Customer Name</label>
                   <input
                     type="text"
-                    id="Title"
-                    name="Title"
-                    value={this.state.proforma.Title}
+                    id="CustomerName"
+                    name="CustomerName"
+                    value={this.state.proforma.CustomerName}
                     onChange={this.handleProformaInputChange}
                     placeholder="Enter customer name"
                     required
@@ -159,17 +165,6 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
                     onChange={this.handleProformaInputChange}
                     placeholder="Enter Proforma number"
                     required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="Created">Created Date</label>
-                  <input
-                    type="date"
-                    id="Created"
-                    name="Created"
-                    value={this.state.proforma.Created.toISOString().split('T')[0]}
-                    onChange={this.handleProformaInputChange}
-                    readOnly
                   />
                 </div>
                 <button type="button" onClick={this.addInvoiceItem}>Add Item</button>
@@ -188,12 +183,12 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
                       />
                     </div>
                     <div>
-                      <label htmlFor={`ItemNumber-${index}`}>Item Number</label>
+                      <label htmlFor={`itemNumber-${index}`}>Item Number</label>
                       <input
                         type="number"
-                        id={`ItemNumber-${index}`}
-                        name="ItemNumber"
-                        value={item.ItemNumber}
+                        id={`itemNumber-${index}`}
+                        name="itemNumber"
+                        value={item.itemNumber}
                         onChange={(e) => this.handleInvoiceInputChange(index, e)}
                         placeholder="Enter item number"
                         required
@@ -217,7 +212,7 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
                         type="number"
                         id={`TotalPrice-${index}`}
                         name="TotalPrice"
-                        value={item.ItemNumber * item.PricePerUnit}
+                        value={item.itemNumber * item.PricePerUnit}
                         readOnly
                         placeholder="Total price"
                       />
