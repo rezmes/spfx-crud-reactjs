@@ -1,5 +1,5 @@
 export interface IListItem {
     Title?: string;
     Id: number;
-    billTo?: string;
+    ProformaNumber?: string; // Add this line if ProformaNumber is a field
 }

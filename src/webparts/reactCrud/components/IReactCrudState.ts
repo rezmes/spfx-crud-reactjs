@@ -7,4 +7,7 @@ export interface IReactCrudState {
   items: IListItem[];
   proforma: IProformaItem;
   invoiceItems: IInvoiceItem[];
+  //editMode: boolean;
+  //editItemId: number | null; // Track which item is being edited
 }
+
