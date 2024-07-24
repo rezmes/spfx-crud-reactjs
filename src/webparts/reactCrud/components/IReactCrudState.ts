@@ -13,6 +13,7 @@ export interface IReactCrudState {
   totalSum: number;
   viewMode: string;
   selectedProformaId: number;
+
   //editMode: boolean;
   //editItemId: number | null; // Track which item is being edited
 }
