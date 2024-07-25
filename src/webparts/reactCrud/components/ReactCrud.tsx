@@ -2,7 +2,6 @@ import * as React from 'react';
 import styles from './ReactCrud.module.scss';
 import { IReactCrudProps } from './IReactCrudProps';
 import { IReactCrudState } from './IReactCrudState';
-import { escape } from '@microsoft/sp-lodash-subset';
 import { sp } from "@pnp/sp";
 import "@pnp/sp/webs";
 import "@pnp/sp/lists";
@@ -12,7 +11,6 @@ import { IInvoiceItem } from './IInvoiceItem';
 import { IListItem } from './IListItem';
 
 export default class ReactCrud extends React.Component<IReactCrudProps, IReactCrudState> {
-
   constructor(props: IReactCrudProps) {
     super(props);
 
@@ -44,11 +42,14 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
         .items.select("Id", "CustomerName", "ProformaNumber")
         .get<IListItem[]>();
 
+      console.log('Fetched Proforma Items:', proformaItems);
+
       this.setState({
         status: `Fetched ${proformaItems.length} items`,
         items: proformaItems
       });
     } catch (err) {
+      console.error('Error fetching proforma items:', err);
       this.setState({
         status: `Error: ${err.message}`,
         items: []
@@ -62,6 +63,8 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
         .getByTitle('invoiceList')
         .items.filter(`ProformaIDId eq ${proformaID}`)
         .get<IInvoiceItem[]>();
+
+      console.log('Fetched Invoice Items:', invoiceItems);
 
       this.setState({
         invoiceItems: invoiceItems.map((item, index) => ({
@@ -83,7 +86,7 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
         .top(1)
         .get();
 
-      const lastProformaNumber = proformaItems.length > 0 ? parseInt(proformaItems[0].ProformaNumber) : 0;
+      const lastProformaNumber = proformaItems.length > 0 ? parseInt(proformaItems[0].ProformaNumber, 10) : 0;
       const newProformaNumber = lastProformaNumber + 1;
 
       this.setState(prevState => ({
@@ -134,7 +137,7 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
       await this.getProformaItems();
       await this.generateProformaNumber();
     } catch (err) {
-      console.error('Error details:', err);
+      console.error('Error creating proforma:', err);
       this.setState({ status: `Error: ${err.message}` });
     }
   }
@@ -152,7 +155,7 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
         status: 'Proforma item deleted successfully'
       }));
     } catch (err) {
-      console.error('Error details:', err);
+      console.error('Error deleting proforma:', err);
       this.setState({ status: `Error: ${err.message}` });
     }
   }
@@ -173,7 +176,8 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
 
   private addInvoiceItem = () => {
     this.setState(prevState => ({
-      invoiceItems: [...prevState.invoiceItems, { ProformaID: 0, ItemName: '', itemNumber: 0, PricePerUnit: 0, TotalPrice: 0 }]
+      invoiceItems: [...prevState.invoiceItems, { ProformaID: 0, ItemName: '', itemNumber: 0, PricePerUnit: 0 }],
+      totalSum: 0
     }));
   }
 
@@ -195,7 +199,15 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
   private handleSelectProforma = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedProformaId = Number(event.target.value);
     if (selectedProformaId) {
-      const selectedProforma = this.state.items.filter(item => item.Id === selectedProformaId)[0];
+
+      let selectedProforma = null;
+for (const item of this.state.items) {
+  if (item.Id === selectedProformaId) {
+    selectedProforma = item;
+    break;
+  }
+}
+
       if (selectedProforma) {
         this.setState({
           proforma: {
@@ -219,25 +231,24 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
   }
 
   private handleTaxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
+    const { value } = event.target;
     this.setState({ tax: parseFloat(value) }, this.calculateTotalSum);
   }
 
   private handleAddedValueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
+    const { value } = event.target;
     this.setState({ addedValue: parseFloat(value) }, this.calculateTotalSum);
   }
 
   private calculateTotalSum = () => {
     const { invoiceItems, tax, addedValue } = this.state;
     const totalSum = invoiceItems.reduce((sum, item) => sum + (item.itemNumber * item.PricePerUnit), 0);
-    const totalWithTaxAndValue = totalSum * (1 + tax / 100) * (1 + addedValue / 100);
-    this.setState({ totalSum: totalWithTaxAndValue });
+    const finalSum = totalSum * (1 + tax / 100) * (1 + addedValue / 100);
+    this.setState({ totalSum: finalSum });
   }
 
   private handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-    if (event.key === 'Enter' && index === this.state.invoiceItems.length - 1) {
-      event.preventDefault();
+    if (event.key === 'Enter') {
       this.addInvoiceItem();
     }
   }
@@ -250,8 +261,48 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     this.setState({ editIndex: null });
   }
 
-  public render(): React.ReactElement<IReactCrudProps> {
-    const { viewMode, proforma, invoiceItems, totalSum, tax, addedValue, items, selectedProformaId, editIndex } = this.state;
+  private handleTaxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const tax = parseFloat(event.target.value);
+    this.setState({ tax }, this.calculateTotalSum);
+  }
+
+  private handleAddedValueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const addedValue = parseFloat(event.target.value);
+    this.setState({ addedValue }, this.calculateTotalSum);
+  }
+
+  private calculateTotalSum = () => {
+    const { invoiceItems, tax, addedValue } = this.state;
+    const sum = invoiceItems.reduce((total, item) => total + (item.itemNumber * item.PricePerUnit), 0);
+    const taxAmount = sum * (tax / 100);
+    const addedValueAmount = sum * (addedValue / 100);
+    const totalSum = sum + taxAmount + addedValueAmount;
+    this.setState({ totalSum });
+  }
+
+  private handleSelectProforma = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = parseInt(event.target.value, 10);
+    this.setState({ selectedProformaId: selectedId, viewMode: 'view' }, () => {
+      if (selectedId) {
+        this.getInvoiceItems(selectedId);
+      }
+    });
+  }
+
+  private handleCreateProformaClick = () => {
+    this.setState({ viewMode: 'create', proforma: { CustomerName: '', ProformaNumber: '' }, invoiceItems: [] }, this.generateProformaNumber);
+  }
+
+  private handleViewProformaClick = () => {
+    this.setState({ viewMode: 'initial' });
+  }
+
+  private handleCancelForm = () => {
+    this.setState({ viewMode: 'initial', proforma: { CustomerName: '', ProformaNumber: '' }, invoiceItems: [] });
+  }
+
+  public render() {
+    const { viewMode, items, proforma, invoiceItems, selectedProformaId, status, tax, addedValue, totalSum, editIndex } = this.state;
 
     return (
       <div className={styles.reactCrud}>
@@ -263,10 +314,10 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
               <p className={styles.description}>{escape(this.props.listName)}</p>
 
               {viewMode === 'initial' ? (
-                <div>
+                <>
                   <button onClick={this.handleCreateProformaClick}>Create Proforma</button>
                   <button onClick={this.handleViewProformaClick}>View Proforma</button>
-                </div>
+                </>
               ) : viewMode === 'create' ? (
                 <form onSubmit={this.handleProformaFormSubmit}>
                   <div className={styles['form-group']}>
@@ -347,11 +398,7 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
                           </td>
                           <td>{item.itemNumber * item.PricePerUnit}</td>
                           <td>
-                            {editIndex === index ? (
-                              <button type="button" onClick={this.handleSaveInvoiceItem}>Save</button>
-                            ) : (
-                              <button type="button" onClick={() => this.handleEditInvoiceItem(index)}>Edit</button>
-                            )}
+                            <button type="button" onClick={() => this.handleEditInvoiceItem(index)}>Edit</button>
                             <button type="button" onClick={() => this.deleteProforma(item.Id)}>Delete</button>
                           </td>
                         </tr>
@@ -367,20 +414,19 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
                     Added Value:
                     <input type="number" value={addedValue} onChange={this.handleAddedValueChange} />%
                   </p>
-                  <button type="submit">Save and Close</button>
+                  <button type="submit">Submit</button>
                   <button type="button" onClick={this.handleCancelForm}>Cancel</button>
                 </form>
               ) : (
                 <div>
-                  <button onClick={this.handleViewProformaClick}>View Proforma</button>
-                  <select onChange={this.handleSelectProforma} title="Select Proforma">
+                  <select onChange={this.handleSelectProforma}>
                     <option value="">Select Proforma</option>
                     {items.map(item => (
-                      <option key={item.Id} value={item.Id}>{item.CustomerName} - {item.ProformaNumber}</option>
+                      <option key={item.Id} value={item.Id}>{item.Title} - {item.ProformaNumber}</option>
                     ))}
                   </select>
                   {selectedProformaId && (
-                    <div>
+                    <>
                       <p>Customer Name: {proforma.CustomerName}</p>
                       <p>Proforma Number: {proforma.ProformaNumber}</p>
                       <table className={styles.table}>
@@ -410,12 +456,12 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
                         </tbody>
                       </table>
                       <button type="button" onClick={this.handleCancelForm}>Back</button>
-                    </div>
+                    </>
                   )}
                 </div>
               )}
             </div>
-          </div>
+          )}
         </div>
       </div>
     );
