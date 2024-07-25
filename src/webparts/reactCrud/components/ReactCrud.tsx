@@ -10,9 +10,12 @@ import "@pnp/sp/items";
 import { IProformaItem } from './IProformaItem';
 import { IInvoiceItem } from './IInvoiceItem';
 import { IListItem } from './IListItem';
+import ProformaForm from './ProformaForm';
+import InvoiceTable from './InvoiceTable';
+import jsPDF from 'jspdf';
+require('jspdf-autotable');
 
-export default class ReactCrud extends React.Component<IReactCrudProps, IReactCrudState> {
-
+class ReactCrud extends React.Component<IReactCrudProps, IReactCrudState> {
   constructor(props: IReactCrudProps) {
     super(props);
 
@@ -23,13 +26,13 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
         CustomerName: '',
         ProformaNumber: ''
       },
-      invoiceItems: [],
-      editIndex: null,
+      invoiceItems: [], // Initialize as an empty array
+      totalSum: 0,
       tax: 0,
       addedValue: 0,
-      totalSum: 0,
       viewMode: 'initial',
-      selectedProformaId: null
+      selectedProformaId: null,
+      editIndex: null
     };
   }
 
@@ -39,10 +42,10 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
 
   private async getProformaItems() {
     try {
-      const proformaItems = await sp.web.lists
+      const proformaItems: IListItem[] = await sp.web.lists
         .getByTitle(this.props.listName)
         .items.select("Id", "CustomerName", "ProformaNumber")
-        .get<IListItem[]>();
+        .get();
 
       this.setState({
         status: `Fetched ${proformaItems.length} items`,
@@ -56,46 +59,25 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     }
   }
 
-  private async getInvoiceItems(proformaID: number) {
+  private async getInvoiceItems(proformaId: number) {
     try {
-      const invoiceItems = await sp.web.lists
+      const invoiceItems: IInvoiceItem[] = await sp.web.lists
         .getByTitle('invoiceList')
-        .items.filter(`ProformaIDId eq ${proformaID}`)
-        .get<IInvoiceItem[]>();
-
-      this.setState({
-        invoiceItems: invoiceItems.map((item, index) => ({
-          ...item,
-          rowNumber: index + 1
-        }))
-      });
-    } catch (err) {
-      console.error('Error fetching invoice items:', err);
-    }
-  }
-
-  private async generateProformaNumber() {
-    try {
-      const proformaItems = await sp.web.lists
-        .getByTitle('ProformaList')
-        .items.select("ProformaNumber")
-        .orderBy("ProformaNumber", false)
-        .top(1)
+        .items.filter(`ProformaIDId eq ${proformaId}`)
         .get();
 
-      const lastProformaNumber = proformaItems.length > 0 ? parseInt(proformaItems[0].ProformaNumber) : 0;
-      const newProformaNumber = lastProformaNumber + 1;
-
-      this.setState(prevState => ({
-        proforma: { ...prevState.proforma, ProformaNumber: newProformaNumber.toString() }
-      }));
+      this.setState({ invoiceItems });
     } catch (err) {
-      console.error('Error generating Proforma number:', err);
+      this.setState({
+        status: `Error fetching invoice items: ${err.message}`,
+        invoiceItems: []
+      });
     }
   }
 
   private async createProforma() {
     try {
+      // Create the Proforma item
       const proforma = await sp.web.lists.getByTitle('ProformaList').items.add({
         CustomerName: this.state.proforma.CustomerName,
         ProformaNumber: this.state.proforma.ProformaNumber
@@ -103,21 +85,19 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
 
       const proformaID = proforma.data.Id;
 
-      console.log('Proforma ID:', proformaID);
-      console.log('Invoice Items:', this.state.invoiceItems);
-
+      // Adding a small delay to ensure the Proforma item is fully created
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // Create the Invoice items
       for (const item of this.state.invoiceItems) {
         const invoiceData = {
-          ProformaIDId: proformaID,
+          ProformaIDId: proformaID, // Ensure the lookup field is set correctly
           ItemName: item.ItemName,
-          itemNumber: Number(item.itemNumber),
-          PricePerUnit: Number(item.PricePerUnit)
+          itemNumber: Number(item.itemNumber), // Ensure it's a number
+          PricePerUnit: Number(item.PricePerUnit) // Ensure it's a number
         };
 
-        console.log('Invoice Data:', invoiceData);
-
+        // Validate the data before sending
         if (!invoiceData.ItemName || isNaN(invoiceData.itemNumber) || isNaN(invoiceData.PricePerUnit)) {
           throw new Error('Invalid invoice data');
         }
@@ -128,31 +108,11 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
       this.setState({
         status: 'Proforma and items created successfully',
         proforma: { CustomerName: '', ProformaNumber: '' },
-        invoiceItems: [],
-        viewMode: 'initial'
+        invoiceItems: []
       });
-      await this.getProformaItems();
-      await this.generateProformaNumber();
+      await this.getProformaItems(); // Refresh the list
     } catch (err) {
-      console.error('Error details:', err);
-      this.setState({ status: `Error: ${err.message}` });
-    }
-  }
-
-  private async deleteProforma(id: number) {
-    try {
-      const invoiceItems = await sp.web.lists.getByTitle('invoiceList').items.filter(`ProformaIDId eq ${id}`).get();
-      for (const item of invoiceItems) {
-        await sp.web.lists.getByTitle('invoiceList').items.getById(item.Id).delete();
-      }
-
-      await sp.web.lists.getByTitle(this.props.listName).items.getById(id).delete();
-      this.setState(prevState => ({
-        items: prevState.items.filter(item => item.Id !== id),
-        status: 'Proforma item deleted successfully'
-      }));
-    } catch (err) {
-      console.error('Error details:', err);
+      console.error('Error details:', err); // Finding error
       this.setState({ status: `Error: ${err.message}` });
     }
   }
@@ -168,12 +128,12 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     const { name, value } = event.target;
     const newInvoiceItems = [...this.state.invoiceItems];
     newInvoiceItems[index] = { ...newInvoiceItems[index], [name]: value };
-    this.setState({ invoiceItems: newInvoiceItems }, this.calculateTotalSum);
+    this.setState({ invoiceItems: newInvoiceItems });
   }
 
   private addInvoiceItem = () => {
     this.setState(prevState => ({
-      invoiceItems: [...prevState.invoiceItems, { ProformaID: 0, ItemName: '', itemNumber: 0, PricePerUnit: 0, TotalPrice: 0 }]
+      invoiceItems: [...prevState.invoiceItems, { ProformaID: 0, ItemName: '', itemNumber: 0, PricePerUnit: 0 }]
     }));
   }
 
@@ -182,77 +142,41 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     this.createProforma();
   }
 
-  private handleCreateProformaClick = async () => {
-    await this.generateProformaNumber();
-    this.setState({ viewMode: 'create' });
-    this.addInvoiceItem();
-  }
-
-  private handleViewProformaClick = () => {
-    this.setState({ viewMode: 'view' });
-  }
-
-  private handleSelectProforma = async (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedProformaId = Number(event.target.value);
-    if (selectedProformaId) {
-      const selectedProforma = this.state.items.filter(item => item.Id === selectedProformaId)[0];
-      if (selectedProforma) {
-        this.setState({
-          proforma: {
-            CustomerName: selectedProforma.CustomerName,
-            ProformaNumber: selectedProforma.ProformaNumber
-          },
-          selectedProformaId
-        });
-        await this.getInvoiceItems(selectedProformaId);
-      }
-    }
-  }
-
-  private handleCancelForm = () => {
-    this.setState({
-      proforma: { CustomerName: '', ProformaNumber: '' },
-      invoiceItems: [],
-      status: 'Form reset successfully',
-      viewMode: 'initial'
-    });
-  }
-
-  private handleTaxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    this.setState({ tax: parseFloat(value) }, this.calculateTotalSum);
-  }
-
-  private handleAddedValueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    this.setState({ addedValue: parseFloat(value) }, this.calculateTotalSum);
-  }
-
-  private calculateTotalSum = () => {
-    const { invoiceItems, tax, addedValue } = this.state;
-    const totalSum = invoiceItems.reduce((sum, item) => sum + (item.itemNumber * item.PricePerUnit), 0);
-    const totalWithTaxAndValue = totalSum * (1 + tax / 100) * (1 + addedValue / 100);
-    this.setState({ totalSum: totalWithTaxAndValue });
-  }
-
-  private handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-    if (event.key === 'Enter' && index === this.state.invoiceItems.length - 1) {
-      event.preventDefault();
-      this.addInvoiceItem();
-    }
+  private handleSaveInvoiceItem = (index: number) => {
+    // Logic to save individual invoice item if needed
   }
 
   private handleEditInvoiceItem = (index: number) => {
     this.setState({ editIndex: index });
   }
 
-  private handleSaveInvoiceItem = () => {
-    this.setState({ editIndex: null });
+  private generatePDF = () => {
+    const doc = new jsPDF();
+    doc.text('Proforma Invoice', 20, 10);
+
+    const tableColumn = ['Row Number', 'Item Name', 'Item Number', 'Price per Unit', 'Total Price'];
+    const tableRows = [];
+
+    this.state.invoiceItems.forEach((item, index) => {
+      const rowData = [
+        index + 1,
+        item.ItemName,
+        item.itemNumber,
+        item.PricePerUnit,
+        item.itemNumber * item.PricePerUnit
+      ];
+      tableRows.push(rowData);
+    });
+
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+    });
+
+    doc.save(`Proforma_${this.state.proforma.ProformaNumber}.pdf`);
   }
 
   public render(): React.ReactElement<IReactCrudProps> {
-    const { viewMode, proforma, invoiceItems, totalSum, tax, addedValue, items, selectedProformaId, editIndex } = this.state;
-
     return (
       <div className={styles.reactCrud}>
         <div className={styles.container}>
@@ -262,156 +186,60 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
               <p className={styles.subTitle}>Customize SharePoint experiences using Web Parts.</p>
               <p className={styles.description}>{escape(this.props.listName)}</p>
 
-              {viewMode === 'initial' ? (
+              {this.state.viewMode === 'initial' && (
                 <div>
-                  <button onClick={this.handleCreateProformaClick}>Create Proforma</button>
-                  <button onClick={this.handleViewProformaClick}>View Proforma</button>
+                  <button onClick={() => this.setState({ viewMode: 'create' })}>Create Proforma</button>
+                  <button onClick={() => this.setState({ viewMode: 'view' })}>View Proforma</button>
                 </div>
-              ) : viewMode === 'create' ? (
-                <form onSubmit={this.handleProformaFormSubmit}>
-                  <div className={styles['form-group']}>
-                    <label htmlFor="CustomerName">Customer Name</label>
-                    <input
-                      type="text"
-                      id="CustomerName"
-                      name="CustomerName"
-                      value={proforma.CustomerName}
-                      onChange={this.handleProformaInputChange}
-                      placeholder="Enter customer name"
-                      required
-                    />
-                  </div>
-                  <div className={styles['form-group']}>
-                    <label htmlFor="ProformaNumber">Proforma Number</label>
-                    <input
-                      type="text"
-                      id="ProformaNumber"
-                      name="ProformaNumber"
-                      value={proforma.ProformaNumber}
-                      onChange={this.handleProformaInputChange}
-                      placeholder="Enter Proforma number"
-                      required
-                      readOnly
-                    />
-                  </div>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Row Number</th>
-                        <th>Item Name</th>
-                        <th>Item Number</th>
-                        <th>Price per Unit</th>
-                        <th>Total Price</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoiceItems.map((item, index) => (
-                        <tr key={index}>
-                          <td>{index + 1}</td>
-                          <td>
-                            <input
-                              type="text"
-                              id={`ItemName-${index}`}
-                              name="ItemName"
-                              value={item.ItemName}
-                              onChange={(e) => this.handleInvoiceInputChange(index, e)}
-                              onKeyDown={(e) => this.handleKeyDown(e, index)}
-                              placeholder="Enter item name"
-                              required
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              id={`itemNumber-${index}`}
-                              name="itemNumber"
-                              value={item.itemNumber}
-                              onChange={(e) => this.handleInvoiceInputChange(index, e)}
-                              onKeyDown={(e) => this.handleKeyDown(e, index)}
-                              placeholder="Enter item number"
-                              required
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              id={`PricePerUnit-${index}`}
-                              name="PricePerUnit"
-                              value={item.PricePerUnit}
-                              onChange={(e) => this.handleInvoiceInputChange(index, e)}
-                              onKeyDown={(e) => this.handleKeyDown(e, index)}
-                              placeholder="Enter price per unit"
-                              required
-                            />
-                          </td>
-                          <td>{item.itemNumber * item.PricePerUnit}</td>
-                          <td>
-                            {editIndex === index ? (
-                              <button type="button" onClick={this.handleSaveInvoiceItem}>Save</button>
-                            ) : (
-                              <button type="button" onClick={() => this.handleEditInvoiceItem(index)}>Edit</button>
-                            )}
-                            <button type="button" onClick={() => this.deleteProforma(item.Id)}>Delete</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p>Total Sum: {totalSum.toFixed(2)}</p>
-                  <p>
-                    Tax:
-                    <input type="number" value={tax} onChange={this.handleTaxChange} />%
-                  </p>
-                  <p>
-                    Added Value:
-                    <input type="number" value={addedValue} onChange={this.handleAddedValueChange} />%
-                  </p>
-                  <button type="submit">Save and Close</button>
-                  <button type="button" onClick={this.handleCancelForm}>Cancel</button>
-                </form>
-              ) : (
+              )}
+
+              {this.state.viewMode === 'view' && (
                 <div>
-                  <button onClick={this.handleViewProformaClick}>View Proforma</button>
-                  <select onChange={this.handleSelectProforma} title="Select Proforma">
+                  <select
+                    onChange={async (e) => {
+                      const proformaId = parseInt(e.target.value, 10);
+                      this.setState({ selectedProformaId: proformaId });
+                      await this.getInvoiceItems(proformaId);
+                    }}
+                    value={this.state.selectedProformaId || ''}
+                    title="Select Proforma"
+                  >
                     <option value="">Select Proforma</option>
-                    {items.map(item => (
-                      <option key={item.Id} value={item.Id}>{item.CustomerName} - {item.ProformaNumber}</option>
+                    {this.state.items.map(item => (
+                      <option key={item.Id} value={item.Id}>{item.CustomerName}</option>
                     ))}
                   </select>
-                  {selectedProformaId && (
-                    <div>
-                      <p>Customer Name: {proforma.CustomerName}</p>
-                      <p>Proforma Number: {proforma.ProformaNumber}</p>
-                      <table className={styles.table}>
-                        <thead>
-                          <tr>
-                            <th>Row Number</th>
-                            <th>Item Name</th>
-                            <th>Item Number</th>
-                            <th>Price per Unit</th>
-                            <th>Total Price</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {invoiceItems.map((item, index) => (
-                            <tr key={index}>
-                              <td>{index + 1}</td>
-                              <td>{item.ItemName}</td>
-                              <td>{item.itemNumber}</td>
-                              <td>{item.PricePerUnit}</td>
-                              <td>{item.itemNumber * item.PricePerUnit}</td>
-                              <td>
-                                <button type="button" onClick={() => this.handleEditInvoiceItem(index)}>Edit</button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <button type="button" onClick={this.handleCancelForm}>Back</button>
-                    </div>
+                  {this.state.selectedProformaId && (
+                    <InvoiceTable
+                      invoiceItems={this.state.invoiceItems}
+                      onInvoiceInputChange={this.handleInvoiceInputChange}
+                      onAddInvoiceItem={this.addInvoiceItem}
+                      onSaveInvoiceItem={this.handleSaveInvoiceItem}
+                      onEditInvoiceItem={this.handleEditInvoiceItem}
+                    />
                   )}
+                </div>
+              )}
+
+              {this.state.viewMode === 'create' && (
+                <div>
+                  <ProformaForm
+                    proforma={this.state.proforma}
+                    onProformaInputChange={this.handleProformaInputChange}
+                    onProformaFormSubmit={this.handleProformaFormSubmit}
+                    onCancelForm={() => this.setState({ viewMode: 'initial' })}
+                    tax={this.state.tax}
+                    addedValue={this.state.addedValue}
+                    onTaxChange={(e) => this.setState({ tax: Number(e.target.value) })}
+                    onAddedValueChange={(e) => this.setState({ addedValue: Number(e.target.value) })}
+                  />
+                  <InvoiceTable
+                    invoiceItems={this.state.invoiceItems}
+                    onInvoiceInputChange={this.handleInvoiceInputChange}
+                    onAddInvoiceItem={this.addInvoiceItem}
+                    onSaveInvoiceItem={this.handleSaveInvoiceItem}
+                    onEditInvoiceItem={this.handleEditInvoiceItem}
+                  />
                 </div>
               )}
             </div>
@@ -421,3 +249,5 @@ export default class ReactCrud extends React.Component<IReactCrudProps, IReactCr
     );
   }
 }
+
+export default ReactCrud;

@@ -9,18 +9,9 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "skipLibCheck": true,
-    "typeRoots": [
-      "./node_modules/@types",
-      "./node_modules/@microsoft"
-    ],
-    "types": [
-      "es6-promise",
-      "webpack-env"
-    ],
-    "lib": [
-      "es5",
-      "dom",
-      "es2015.collection"
-    ]
-  }
+    "typeRoots": ["./node_modules/@types", "./node_modules/@microsoft"],
+    "types": ["es6-promise", "webpack-env"],
+    "lib": ["es5", "dom", "es2015.collection"]
+  },
+  "include": ["src/**/*"]
 }

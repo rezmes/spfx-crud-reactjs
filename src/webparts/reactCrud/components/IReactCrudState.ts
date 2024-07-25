@@ -7,13 +7,12 @@ export interface IReactCrudState {
   items: IListItem[];
   proforma: IProformaItem;
   invoiceItems: IInvoiceItem[];
-  editIndex: number;
   tax: number;
   addedValue:number;
   totalSum: number;
   viewMode: string;
   selectedProformaId: number;
-
+  editIndex: number | null; // Add this line
   //editMode: boolean;
   //editItemId: number | null; // Track which item is being edited
 }
